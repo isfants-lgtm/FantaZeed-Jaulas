@@ -3,7 +3,7 @@ version: '1.0.0'
 main: com.zeed.jaulas.ZeedJaulas
 api-version: '1.21'
 description: Jaulas temporarias de vidro para prender jogadores.
-author: Zeed
+author: FantaZeed
 
 commands:
   jaula:
