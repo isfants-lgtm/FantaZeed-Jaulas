@@ -35,6 +35,9 @@ public class CageManager {
 
     private static class ActiveCage {
         World world;
+        CageType type;
+        int bx, by, bz;
+        int r, h;
         Material material;
         List<SavedBlock> blocks = new ArrayList<>();
         BukkitTask task;
@@ -46,6 +49,7 @@ public class CageManager {
     private final File cagesDir;
     private final Map<UUID, ActiveCage> active = new HashMap<>();
     private final Set<BlockKey> protectedBlocks = new HashSet<>();
+    private List<String> insideNames = new ArrayList<>();
     private boolean particleWarned = false;
 
     public CageManager(ZeedJaulas plugin) {
@@ -53,6 +57,15 @@ public class CageManager {
         this.itemKey = new NamespacedKey(plugin, "tipo_jaula");
         this.cagesDir = new File(plugin.getDataFolder(), "cages");
         if (!cagesDir.exists()) cagesDir.mkdirs();
+        reloadSettings();
+    }
+
+    public void reloadSettings() {
+        List<String> names = new ArrayList<>();
+        for (String s : plugin.getConfig().getStringList("protegidos-dentro")) {
+            names.add(s.toUpperCase());
+        }
+        insideNames = names;
     }
 
     // ------------------------------------------------------------ itens
@@ -68,8 +81,20 @@ public class CageManager {
         return m;
     }
 
+    /** Material do item segurado: o mesmo vidro da jaula, mas em painel. */
+    public Material itemMaterial(CageType type) {
+        String override = plugin.getConfig().getString("jaulas." + type.key + ".item", "");
+        if (override != null && !override.isEmpty()) {
+            Material m = Material.matchMaterial(override);
+            if (m != null && m.isItem()) return m;
+        }
+        Material block = blockMaterial(type);
+        Material pane = Material.matchMaterial(block.name() + "_PANE");
+        return (pane != null && pane.isItem()) ? pane : block;
+    }
+
     public ItemStack createItem(CageType type) {
-        ItemStack item = new ItemStack(blockMaterial(type));
+        ItemStack item = new ItemStack(itemMaterial(type));
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(ZeedJaulas.color(
@@ -108,35 +133,67 @@ public class CageManager {
         return protectedBlocks.contains(new BlockKey(w.getUID(), x, y, z));
     }
 
+    private boolean matchesInside(Material m) {
+        String n = m.name();
+        for (String p : insideNames) {
+            if (p.startsWith("*") ? n.endsWith(p.substring(1)) : n.equals(p)) return true;
+        }
+        return false;
+    }
+
+    /** Teia / la (configuravel) dentro de uma jaula ativa: nao pode ser quebrada. */
+    public boolean isProtectedInside(Block b) {
+        if (active.isEmpty()) return false;
+        if (!matchesInside(b.getType())) return false;
+        for (ActiveCage ac : active.values()) {
+            if (!ac.world.equals(b.getWorld())) continue;
+            if (isInterior(ac.type, ac.r, ac.h, b.getX() - ac.bx, b.getY() - ac.by, b.getZ() - ac.bz)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // ------------------------------------------------------------ formato
 
     private static int clamp(int v, int min, int max) {
         return Math.max(min, Math.min(max, v));
     }
 
-    private static boolean inDisc(int dx, int dz, int r) {
-        double lim = (r + 0.5) * (r + 0.5);
-        return dx * dx + dz * dz <= lim;
+    private int radius(CageType type) {
+        int def = type == CageType.QUADRADA ? 2 : 3;
+        int min = type == CageType.QUADRADA ? 1 : 2;
+        return clamp(plugin.getConfig().getInt("jaulas." + type.key + ".raio", def), min, 8);
     }
 
-    private static boolean isEdge(int dx, int dz, int r) {
+    private int height(CageType type) {
+        return clamp(plugin.getConfig().getInt("jaulas." + type.key + ".altura", 3), 2, 10);
+    }
+
+    private static boolean inSphere(int x, int y, int z, int r) {
+        double lim = (r + 0.5) * (r + 0.5);
+        return x * x + y * y + z * z <= lim;
+    }
+
+    /** Bloco da esfera que encosta (inclusive na diagonal) em algo de fora: forma uma casca sem buracos. */
+    private static boolean sphereEdge(int x, int y, int z, int r) {
         for (int ox = -1; ox <= 1; ox++) {
-            for (int oz = -1; oz <= 1; oz++) {
-                if (ox == 0 && oz == 0) continue;
-                if (!inDisc(dx + ox, dz + oz, r)) return true;
+            for (int oy = -1; oy <= 1; oy++) {
+                for (int oz = -1; oz <= 1; oz++) {
+                    if (ox == 0 && oy == 0 && oz == 0) continue;
+                    if (!inSphere(x + ox, y + oy, z + oz, r)) return true;
+                }
             }
         }
         return false;
     }
 
-    /** Offsets (dx, dy, dz) relativos ao bloco dos pes do jogador. */
+    /** Offsets relativos ao bloco dos pes do jogador. A esfera tem o fundo logo abaixo dos pes. */
     private List<int[]> shape(CageType type) {
-        FileConfiguration cfg = plugin.getConfig();
-        int defRadius = type == CageType.QUADRADA ? 2 : 3;
-        int r = clamp(cfg.getInt("jaulas." + type.key + ".raio", defRadius), 1, 8);
-        int h = clamp(cfg.getInt("jaulas." + type.key + ".altura", 3), 2, 10);
-
+        int r = radius(type);
+        int h = height(type);
         List<int[]> list = new ArrayList<>();
+
         if (type == CageType.QUADRADA) {
             int e = r + 1;
             for (int dy = -1; dy <= h; dy++) {
@@ -150,20 +207,26 @@ public class CageManager {
                 }
             }
         } else {
+            int cy = r - 1;
             int e = r + 1;
-            for (int dy = -1; dy <= h; dy++) {
-                boolean cap = dy == -1 || dy == h;
-                for (int dx = -e; dx <= e; dx++) {
-                    for (int dz = -e; dz <= e; dz++) {
-                        if (!inDisc(dx, dz, r)) continue;
-                        if (cap || isEdge(dx, dz, r)) {
-                            list.add(new int[]{dx, dy, dz});
-                        }
+            for (int x = -e; x <= e; x++) {
+                for (int y = -e; y <= e; y++) {
+                    for (int z = -e; z <= e; z++) {
+                        if (!inSphere(x, y, z, r) || !sphereEdge(x, y, z, r)) continue;
+                        list.add(new int[]{x, y + cy, z});
                     }
                 }
             }
         }
         return list;
+    }
+
+    private static boolean isInterior(CageType type, int r, int h, int dx, int dy, int dz) {
+        if (type == CageType.QUADRADA) {
+            return Math.abs(dx) <= r && Math.abs(dz) <= r && dy >= 0 && dy < h;
+        }
+        int y = dy - (r - 1);
+        return inSphere(dx, y, dz, r) && !sphereEdge(dx, y, dz, r);
     }
 
     private boolean replaceable(Block b) {
@@ -212,6 +275,12 @@ public class CageManager {
 
         ActiveCage ac = new ActiveCage();
         ac.world = w;
+        ac.type = type;
+        ac.bx = bx;
+        ac.by = by;
+        ac.bz = bz;
+        ac.r = radius(type);
+        ac.h = height(type);
         ac.material = mat;
 
         for (int[] o : shape) {
