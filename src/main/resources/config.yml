@@ -4,8 +4,14 @@
 # Quanto tempo o jogador fica preso (em segundos)
 duracao-segundos: 15
 
-# Gasta 1 item da jaula a cada uso (nao gasta em modo criativo)
-consumir-item: true
+# Gasta 1 item a cada uso? (false = item reutilizavel, nunca acaba)
+consumir-item: false
+
+# Alcance (em blocos) do item ao usar mirando no jogador, sem precisar clicar nele
+alcance: 30
+
+# Exige linha de visao (nao prende jogador atras de parede)
+linha-de-visao: true
 
 # Impede o jogador preso de se teleportar para fora (ender pearl, /spawn, etc.)
 bloquear-teleporte: true
@@ -13,27 +19,38 @@ bloquear-teleporte: true
 # Remove a jaula na hora se o jogador preso morrer
 remover-ao-morrer: true
 
+# Blocos que NAO podem ser quebrados DENTRO da jaula enquanto ela estiver ativa.
+# Use * no inicio para pegar todos que terminam assim (ex: "*_WOOL" = toda la).
+# O chao e outros blocos nao entram aqui.
+protegidos-dentro:
+  - COBWEB
+  - "*_WOOL"
+
 jaulas:
   quadrada:
-    # Bloco usado nas paredes, chao e teto (nome do Material do Minecraft)
+    # Bloco usado nas paredes, chao e teto
     bloco: RED_STAINED_GLASS
+    # Item que o jogador segura. Vazio = automatico (mesmo vidro, em painel)
+    item: ""
     # Raio interno: 2 = espaco interno de 5x5 blocos
     raio: 2
     # Altura interna em blocos (minimo 2)
     altura: 3
     nome-item: "&c&lJaula Quadrada"
     lore:
-      - "&7Clique com o botao direito"
-      - "&7em um jogador para prende-lo."
+      - "&7Mire em um jogador e clique"
+      - "&7com o botao direito para prende-lo."
   redonda:
     bloco: GLASS
-    # Raio interno aproximado do circulo
+    item: ""
+    # Raio da esfera (minimo 2). 3 = bola de uns 7 blocos de largura
+    # (a altura e calculada sozinha, o campo 'altura' nao e usado)
     raio: 3
     altura: 3
     nome-item: "&b&lJaula Redonda"
     lore:
-      - "&7Clique com o botao direito"
-      - "&7em um jogador para prende-lo."
+      - "&7Mire em um jogador e clique"
+      - "&7com o botao direito para prende-lo."
 
 particulas:
   ativado: true
@@ -51,6 +68,7 @@ mensagens:
   apenas-jogadores: "&cInforme um jogador: /jaula {jaula} <jogador>"
   item-recebido: "&aVoce recebeu uma jaula {jaula}!"
   item-entregue: "&aVoce entregou uma jaula {jaula} para {jogador}."
+  nenhum-alvo: "&cNenhum jogador na sua mira."
   jaula-aplicada: "&aVoce prendeu &e{jogador}&a por &e{segundos}s&a!"
   voce-foi-preso: "&cVoce foi preso em uma jaula por &e{segundos} segundos&c!"
   jaula-removida: "&aA jaula desapareceu. Voce esta livre!"
