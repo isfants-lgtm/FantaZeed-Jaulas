@@ -1,0 +1,61 @@
+# ZeedJaulas - configuracao
+# Use & para cores nas mensagens e nomes.
+
+# Quanto tempo o jogador fica preso (em segundos)
+duracao-segundos: 15
+
+# Gasta 1 item da jaula a cada uso (nao gasta em modo criativo)
+consumir-item: true
+
+# Impede o jogador preso de se teleportar para fora (ender pearl, /spawn, etc.)
+bloquear-teleporte: true
+
+# Remove a jaula na hora se o jogador preso morrer
+remover-ao-morrer: true
+
+jaulas:
+  quadrada:
+    # Bloco usado nas paredes, chao e teto (nome do Material do Minecraft)
+    bloco: RED_STAINED_GLASS
+    # Raio interno: 2 = espaco interno de 5x5 blocos
+    raio: 2
+    # Altura interna em blocos (minimo 2)
+    altura: 3
+    nome-item: "&c&lJaula Quadrada"
+    lore:
+      - "&7Clique com o botao direito"
+      - "&7em um jogador para prende-lo."
+  redonda:
+    bloco: GLASS
+    # Raio interno aproximado do circulo
+    raio: 3
+    altura: 3
+    nome-item: "&b&lJaula Redonda"
+    lore:
+      - "&7Clique com o botao direito"
+      - "&7em um jogador para prende-lo."
+
+particulas:
+  ativado: true
+  # Opcoes: END_ROD, CLOUD, FLAME, CRIT, PORTAL, HEART, NOTE, POOF
+  ao-aparecer: END_ROD
+  ao-desaparecer: CLOUD
+  quantidade: 2
+
+mensagens:
+  prefixo: "&8[&bZeedJaulas&8] &r"
+  sem-permissao: "&cApenas OPs podem usar este comando."
+  uso: "&eUse: /jaula <quadrada|redonda|remover|reload> [jogador]"
+  recarregado: "&aConfiguracao recarregada!"
+  jogador-nao-encontrado: "&cJogador nao encontrado."
+  apenas-jogadores: "&cInforme um jogador: /jaula {jaula} <jogador>"
+  item-recebido: "&aVoce recebeu uma jaula {jaula}!"
+  item-entregue: "&aVoce entregou uma jaula {jaula} para {jogador}."
+  jaula-aplicada: "&aVoce prendeu &e{jogador}&a por &e{segundos}s&a!"
+  voce-foi-preso: "&cVoce foi preso em uma jaula por &e{segundos} segundos&c!"
+  jaula-removida: "&aA jaula desapareceu. Voce esta livre!"
+  alvo-ja-preso: "&c{jogador} ja esta preso em uma jaula."
+  area-ocupada: "&cJa existe outra jaula nessa area."
+  teleporte-bloqueado: "&cVoce nao pode se teleportar enquanto esta preso!"
+  nao-preso: "&c{jogador} nao esta preso."
+  jaula-removida-admin: "&aJaula de {jogador} removida."
